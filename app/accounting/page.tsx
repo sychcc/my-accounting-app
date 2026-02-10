@@ -1,7 +1,8 @@
 'use client';
 import { useState,useEffect } from "react";
 import {auth,db} from "@/app/firebase/firebase"
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged,User} from "firebase/auth";
+
 //引入firestore的工具
 import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc,serverTimestamp} from "firebase/firestore";
 import Form from "./components/Form"
@@ -19,10 +20,11 @@ export interface RecordItem{
 
 export default function AccountingPage(){
     //這裡放使用者資訊
-    const [user,setUser]=useState<any>(null)
+    const [user,setUser]=useState<User|null>(null)
     //這裡放list狀態，再傳給List.tsx去顯示
     //放RecordItem的array, 初始值是empty array
     const [list,setList]=useState<RecordItem[]>([])
+  
     //監聽登入狀態
     useEffect(() => {
         // 監聽登入狀態
@@ -99,6 +101,7 @@ export default function AccountingPage(){
    return (
   <div className="min-h-screen bg-gray-50 py-10 flex justify-center">
     <div className="w-full max-w-2xl bg-white border border-gray-300 p-8 shadow-sm">
+     <p className="mb-4 text-center">您已經使用 <strong>{user?.email}</strong> 登入</p>
       <Form onAdd={handleAdd} />
       <hr className="my-6 border-gray-200" />
       <List items={list} onDelete={handleDelete} />
