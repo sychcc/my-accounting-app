@@ -1,20 +1,65 @@
 'use client';
-import { useState } from "react";
+import { useState,useEffect } from "react";
+import {auth,db} from "@/app/firebase/firebase"
+import { onAuthStateChanged } from "firebase/auth";
+//引入firestore的工具
+import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc,serverTimestamp} from "firebase/firestore";
 import Form from "./components/Form"
 import List from "./components/List"
 import Link from "next/link"
 
+
 export interface RecordItem{
-    id:number,
+    //id 通常是字串（例如 N5xrXCb...）不是數字
+    id:string,
     category:string,
     amount:number,
     note:string
 }
 
 export default function AccountingPage(){
+    //這裡放使用者資訊
+    const [user,setUser]=useState<any>(null)
     //這裡放list狀態，再傳給List.tsx去顯示
     //放RecordItem的array, 初始值是empty array
     const [list,setList]=useState<RecordItem[]>([])
+    //監聽登入狀態
+    useEffect(() => {
+        // 監聽登入狀態
+        const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                setUser(currentUser);
+                
+                //登入成功 設定資料庫即時監聽
+                const q = query(
+                    collection(db, "records"),
+                    where("uid", "==", currentUser.uid), //只抓自己的資料
+                    orderBy("createdAt", "desc") //按時間排序
+                );
+
+                // onSnapshot會在資料庫有變動時自動執行
+                const unsubscribeData = onSnapshot(q, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })) as unknown as RecordItem[];
+                    setList(data); // 更新React狀態，畫面會自動render
+                });
+
+                //組件卸載時取消監聽資料庫
+                return () => unsubscribeData();
+            } else {
+                //沒登入就導回首頁
+                window.location.href = "/";
+            }
+        });
+
+        //組件卸載時取消監聽身分
+        return () => unsubscribeAuth();
+    }, []);
+
+
+
     //計算總金額 prev是累加金額 curr是當前資料
     const totalAmount=list.reduce((prev,curr)=>{
         if(curr.category==='Income'){
@@ -24,23 +69,33 @@ export default function AccountingPage(){
         }
     },0)
     //新增處理
-    function handleAdd(data:any){
-        //1. 接收Form傳來的新資料
-        const record={
-            id:Date.now(),
-            ...data
+    async function handleAdd(data: any) {
+        if (!user) return;
+        
+        try {
+            // 直接推送到雲端，onSnapshot更新畫面
+            await addDoc(collection(db, "records"), {
+                uid: user.uid, //綁定 uid
+                category: data.category,
+                amount: Number(data.amount),
+                note: data.note,
+                createdAt: serverTimestamp() //Firebase伺服器時間
+            });
+        } catch (error) {
+            console.error("新增到 Firestore 失敗:", error);
+            alert("新增失敗，請檢查權限設定");
         }
-        //2. 資料更新到list(用setList)
-        //react不能直接修改，所以先展開舊的list
-        setList([...list,record])
-
     }
     //刪除處理
-   function handleDelete(id:number){
-    //用filter讓非刪除id的item留下來
-    const newList=list.filter((item:any)=>item.id !==id)
-    setList(newList)
-   }
+   async function handleDelete(id: string) {
+        try {
+            // 根據ID刪除雲端資料
+            await deleteDoc(doc(db, "records", id));
+        } catch (error) {
+            console.error("從 Firestore 刪除失敗:", error);
+            alert("刪除失敗");
+        }
+    }
    return (
   <div className="min-h-screen bg-gray-50 py-10 flex justify-center">
     <div className="w-full max-w-2xl bg-white border border-gray-300 p-8 shadow-sm">
