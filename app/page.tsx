@@ -5,7 +5,8 @@ import Link from 'next/link'
 import {useState,useEffect} from "react"
 // firebase
 import { onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword } from "firebase/auth";
-import{ auth } from '@/app/firebase/firebase'
+import { auth } from '@/app/firebase/firebase'
+import { User } from 'firebase/auth'
 
 
 export default function Home() {
@@ -15,7 +16,7 @@ export default function Home() {
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
  
-  const [currentUser,setCurrentUser]=useState(null)
+  const [currentUser,setCurrentUser]=useState<User|null>(null)
 
   //監聽登入狀態切換
   useEffect(()=>{
