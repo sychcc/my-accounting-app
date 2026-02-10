@@ -6,13 +6,13 @@ interface ListProps{
     //page給的清單
     items:RecordItem[],
     //需要id
-    onDelete:(id:number)=>void
+    onDelete:(id:string)=>void
 }
 
 //接收page的list item, 還有delete功能
 export default function List({items,onDelete}:ListProps){
     //處理刪除list item
-    function handleDelete(id:number){
+    function handleDelete(id:string){
         onDelete(id)
 
     }
